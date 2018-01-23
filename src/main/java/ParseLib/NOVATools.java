@@ -9,7 +9,7 @@ import Exceptions.RootNotSingularException;
 
 public class NOVATools {
     //return true if success
-    //false if failed
+    //throws exceptions if failed
     // value is allocated by the caller
     static public boolean NovaParse(Context context , Value value) throws  RuntimeException{
           String json = context.getJson();
@@ -31,12 +31,13 @@ public class NOVATools {
                   result=parseLiteral(context,"null",value);
                   break;
               default:
-                  throw  new InvalidValueException();
+                  result=parseNumber(context,value);
           }
           if(result)
             parseWhiteSpace(context);
+          //invalid value
           else
-              return result;
+              throw new InvalidValueException();
           if(context.getCursor()<json.length())
               throw new RootNotSingularException();
 
@@ -75,5 +76,61 @@ public class NOVATools {
                    break;
            }
         context.setCursor(pos);
+    }
+    static private boolean parseNumber(Context context,Value value){
+          int pos = context.getCursor();
+          String json = context.getJson();
+          StringBuilder number = new StringBuilder();
+          if(json.charAt(pos)=='-')
+          {
+              number.append(json.charAt(pos++));
+          }
+          //scan util we meet first character which is not located in 1-9
+          while(pos<json.length()&&isDigitExceptZero(json.charAt(pos),true))
+          {
+              number.append(json.charAt(pos++));
+          }
+          // first not digit character
+          if(pos==json.length()){
+            value.setNova_type(NOVA_TYPE.NOVA_NUMBER);
+            value.setNumber();
+          }
+          if(json.charAt(pos)=='0')
+          {
+            number.append(json.charAt(pos++));
+          }
+          if('.'==(json.charAt(pos))){
+              number.append(json.charAt(pos++));
+              //scan util we meet first character which is not located in 0-9
+              while(pos<json.length()&&isDigitExceptZero(json.charAt(pos),false))
+              {
+                  number.append(json.charAt(pos++));
+              }
+              //only legal condition
+              if('E'==json.charAt(pos)||'e'==json.charAt(pos)){
+                  number.append(json.charAt(pos++));
+              }
+              else
+                  throw  new InvalidValueException(" invalid number");
+              if('+'==json.charAt(pos)||'-'==json.charAt(pos))
+              {
+                  number.append(json.charAt(pos++));
+              }
+
+          }
+          else  if('E'==json.charAt(pos)||'e'==json.charAt(pos)){
+              number.append(json.charAt(pos));
+              pos++;
+          }
+          else
+              throw new InvalidValueException(" not a valid number");
+
+
+    }
+    static private boolean isDigitExceptZero(char ch,boolean except){
+        if(except)
+            return ch>='1'&&ch<='9';
+        else
+            return ch>='0'&&ch<='9';
     }
 }

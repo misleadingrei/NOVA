@@ -13,11 +13,14 @@ public class Value {
 
     private NOVA_TYPE nova_type ;
 
+    //this method is accessable only when type is number
     public double getNumber() {
+        assert (NOVA_TYPE.NOVA_NUMBER.equals(this.getNova_type()));
         return number;
     }
 
     public void setNumber(double number) {
+        assert (NOVA_TYPE.NOVA_NUMBER.equals(this.getNova_type()));
         this.number = number;
     }
 

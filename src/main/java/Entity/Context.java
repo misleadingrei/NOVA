@@ -22,7 +22,7 @@ public class Context {
         this.cursor = cursor;
     }
 
-    public Context(String json, int cursor) {
+     Context(String json, int cursor) {
         this.json = json;
         this.cursor = cursor;
     }
