@@ -5,6 +5,7 @@ import Entity.Context;
 import Entity.Value;
 import Exceptions.ExceptValueException;
 import Exceptions.InvalidValueException;
+import Exceptions.NumberTooBigException;
 import Exceptions.RootNotSingularException;
 
 public class NOVATools {
@@ -31,7 +32,12 @@ public class NOVATools {
                   result=parseLiteral(context,"null",value);
                   break;
               default:
-                  result=parseNumber(context,value);
+              {
+                      result=parseNumber(context,value);
+                     if(Double.POSITIVE_INFINITY==value.getNumber()||
+                        Double.NEGATIVE_INFINITY==value.getNumber())
+                         throw new NumberTooBigException();
+              }
           }
           if(result)
             parseWhiteSpace(context);
@@ -81,46 +87,94 @@ public class NOVATools {
           int pos = context.getCursor();
           String json = context.getJson();
           StringBuilder number = new StringBuilder();
+          //robust
+          if(json==null||json.length()==0)
+              throw new InvalidValueException();
           if(json.charAt(pos)=='-')
           {
               number.append(json.charAt(pos++));
           }
+          if(json.length()==pos||!isDigitExceptZero(json.charAt(pos),false))
+                  throw new InvalidValueException();
+          else
+              number.append(json.charAt(pos++));
           //scan util we meet first character which is not located in 1-9
           while(pos<json.length()&&isDigitExceptZero(json.charAt(pos),true))
           {
               number.append(json.charAt(pos++));
           }
-          // first not digit character
           if(pos==json.length()){
-            value.setNova_type(NOVA_TYPE.NOVA_NUMBER);
-            value.setNumber();
+            finishParseNumber(context,value,pos,number);
+            return true;
           }
-          if(json.charAt(pos)=='0')
-          {
-            number.append(json.charAt(pos++));
-          }
+          // first not digit character
           if('.'==(json.charAt(pos))){
               number.append(json.charAt(pos++));
+              //after . should be at least one number
+              if(json.length()==pos||!isDigitExceptZero(json.charAt(pos),false))
+                  throw new InvalidValueException();
+              else
+                  number.append(json.charAt(pos++));
               //scan util we meet first character which is not located in 0-9
               while(pos<json.length()&&isDigitExceptZero(json.charAt(pos),false))
               {
                   number.append(json.charAt(pos++));
               }
-              //only legal condition
+              //bound check
+              if(pos==json.length()){
+                  finishParseNumber(context,value,pos,number);
+                  return true;
+              }
+              //pos<json.length()
               if('E'==json.charAt(pos)||'e'==json.charAt(pos)){
                   number.append(json.charAt(pos++));
               }
-              else
-                  throw  new InvalidValueException(" invalid number");
+              //after E or e should be number or '+' or '-'
+              if(pos==json.length())
+                  throw new InvalidValueException();
+              //pos<json.length()
               if('+'==json.charAt(pos)||'-'==json.charAt(pos))
               {
                   number.append(json.charAt(pos++));
+                  //after + or - should be at least one number
+                  if(json.length()==pos||!isDigitExceptZero(json.charAt(pos),false))
+                      throw new InvalidValueException();
+              }
+              while(pos<json.length()&&isDigitExceptZero(json.charAt(pos),false))
+              {
+                  number.append(json.charAt(pos++));
+              }
+              if(pos==json.length()){
+                  finishParseNumber(context,value,pos,number);
+                  return true;
+              }
+              else {
+                  throw new InvalidValueException("invalid number");
               }
 
           }
           else  if('E'==json.charAt(pos)||'e'==json.charAt(pos)){
-              number.append(json.charAt(pos));
-              pos++;
+              number.append(json.charAt(pos++));
+              if(pos==json.length())
+                  throw new InvalidValueException();
+              //pos<json.length()
+              if('+'==json.charAt(pos)||'-'==json.charAt(pos))
+              {
+                  number.append(json.charAt(pos++));
+                  //after + or - should be at least one number
+                  if(json.length()==pos||!isDigitExceptZero(json.charAt(pos),false))
+                      throw new InvalidValueException();
+              }
+              while(pos<json.length()&&isDigitExceptZero(json.charAt(pos),false))
+              {
+                  number.append(json.charAt(pos++));
+              }
+              if(pos==json.length()){
+                  finishParseNumber(context,value,pos,number);
+                  return true;
+              }
+                  throw new InvalidValueException("invalid number");
+
           }
           else
               throw new InvalidValueException(" not a valid number");
@@ -132,5 +186,10 @@ public class NOVATools {
             return ch>='1'&&ch<='9';
         else
             return ch>='0'&&ch<='9';
+    }
+    static  private void finishParseNumber(Context context ,Value value,int pos,StringBuilder number){
+        value.setNova_type(NOVA_TYPE.NOVA_NUMBER);
+        value.setNumber(Double.valueOf(number.toString()));
+        context.setCursor(pos);
     }
 }
